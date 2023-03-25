@@ -4,8 +4,10 @@ using KontrolSystem.TO2.Binding;
 using KSP.Game;
 using KSP.Map;
 using KSP.Sim;
+using Shapes;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace KontrolSystem.KSP.Runtime.KSPDebug {
@@ -30,15 +32,6 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
             private Func<Position> startProvider;
             private Func<Position> endProvider;
             private Func<Vector> vectorProvider;
-
-            private LineRenderer line;
-            private LineRenderer hat;
-
-            private GameObject lineObj;
-            private GameObject hatObj;
-            private GameObject labelObj;
-
-            private TextMeshPro label;
 
             private string labelStr;
 
@@ -67,75 +60,50 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
             [KSField(Description = "Controls if the debug-vector is currently visible (initially `true`)")]
             public bool Visible {
                 get => enable;
-                set {
-                    if (value) {
-                        if (line == null || hat == null) {
-                            lineObj = new GameObject("KS2DebugVectorLine", typeof(LineRenderer));
-                            hatObj = new GameObject("KS2DebugVectorHat", typeof(LineRenderer));
-
-                            line = lineObj.GetComponent<LineRenderer>();
-                            hat = hatObj.GetComponent<LineRenderer>();
-
-                            labelObj = new GameObject("KS2DebugVectorLabel", typeof(TextMeshPro));
-                            label = labelObj.GetComponent<TextMeshPro>();
-
-                            line.useWorldSpace = false;
-                            hat.useWorldSpace = false;
-
-                            line.material = GLUtils.Colored;
-                            hat.material = GLUtils.Colored;
-
-                            label.text = labelStr;
-                            label.horizontalAlignment = HorizontalAlignmentOptions.Center;
-                            label.verticalAlignment = VerticalAlignmentOptions.Middle;
-                            label.color = Color.Color;
-                            label.enableWordWrapping = false;
-                            label.lineSpacing = 1.0f;
-
-                            RenderValues();
-                        }
-
-                        line.enabled = true;
-                        hat.enabled = Pointy;
-                    } else {
-                        if (label != null) {
-                            GameObject.Destroy(label);
-                            label = null;
-                        }
-
-                        if (hat != null) {
-                            hat.enabled = false;
-                            GameObject.Destroy(hat);
-                            hat = null;
-                        }
-
-                        if (line != null) {
-                            line.enabled = false;
-                            GameObject.Destroy(line);
-                            line = null;
-                        }
-
-                        labelObj = null;
-                        hatObj = null;
-                        lineObj = null;
-                    }
-
-                    enable = value;
-                }
+                set => enable = value;
             }
 
             [KSMethod]
             public void Remove() => KSPContext.CurrentContext.RemoveMarker(this);
 
             public void OnUpdate() {
-                if (line == null || hat == null) return;
-                if (!enable) return;
-
-                RenderPointCoords();
-                LabelPlacement();
             }
 
             public void OnRender() {
+            }
+
+            public void OnDrawShapes(Camera cam) {
+                if (!enable) return;
+
+                    Draw.ConeSizeSpace = ThicknessSpace.Pixels;
+                    Draw.LineThicknessSpace = ThicknessSpace.Pixels;
+                    Draw.LineThickness = (float)Width;
+                    Draw.LineGeometry = LineGeometry.Volumetric3D;
+                    
+                    Position start = startProvider();
+                    Position end = endProvider?.Invoke() ?? start + vectorProvider();
+                    Vector3d startLocal;
+                    Vector3d vectorLocal;
+                    double mapWidthMult = 1.0;
+                    
+                    if (KSPContext.CurrentContext.Game.Map.TryGetMapCore(out MapCore mapCore) && mapCore.IsEnabled) {
+                        var space = mapCore.map3D.GetSpaceProvider();
+
+                        startLocal = space.TranslateSimPositionToMapPosition(start);
+                        vectorLocal = space.TranslateSimPositionToMapPosition(end) - startLocal;
+                        mapWidthMult = 1500 / space.Map3DScaleInv;
+                    } else {
+                        var frame = KSPContext.CurrentContext.ActiveVessel.transform?.coordinateSystem;
+                        startLocal = frame.ToLocalPosition(start);
+                        vectorLocal = frame.ToLocalPosition(end) - startLocal;
+                    }
+
+                    Draw.FontSize = (float)(12 * mapWidthMult);
+                    
+                    Draw.Line(startLocal, startLocal + vectorLocal, Color.Color);
+                    if(Pointy)
+                        Draw.Cone(startLocal + vectorLocal, vectorLocal.normalized, (float)(Width * 2), (float)(Width * 2), false, Color.Color);
+                    Draw.Text(startLocal + 0.5 * vectorLocal, cam.transform.rotation, labelStr, Color.Color);
             }
 
             [KSField(Description = "The current starting position of the debugging vector.")]
@@ -171,80 +139,9 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
             }
 
             private void RenderPointCoords() {
-                if (line != null && hat != null) {
-                    double mapLengthMult = 1.0; // for scaling when on map view.
-                    double mapWidthMult = 1.0; // for scaling when on map view.
-                    float useWidth;
-                    Position start = startProvider();
-                    Position end = endProvider?.Invoke() ?? start + vectorProvider();
-                    Vector3d startLocal;
-                    Vector3d vectorLocal;
-
-                    if (KSPContext.CurrentContext.Game.Map.TryGetMapCore(out MapCore mapCore) && mapCore.IsEnabled) {
-                        var space = mapCore.map3D.GetSpaceProvider();
-
-                        startLocal = space.TranslateSimPositionToMapPosition(start);
-                        vectorLocal = space.TranslateSimPositionToMapPosition(end) - startLocal;
-                        lineObj.layer = 27;
-                        labelObj.layer = 27;
-                        hatObj.layer = 27;
-                        mapWidthMult = 1500 / space.Map3DScaleInv;
-                    } else {
-                        var frame = KSPContext.CurrentContext.ActiveVessel.transform?.coordinateSystem;
-                        startLocal = frame.ToLocalPosition(start);
-                        vectorLocal = frame.ToLocalPosition(end) - startLocal;
-                        lineObj.layer = 0;
-                        labelObj.layer = 0;
-                        hatObj.layer = 0;
-                    }
-                    Camera camera = KSPContext.CurrentContext.Game.SessionManager.GetMyActiveCamera();
-
-                    Vector3d point1 = mapLengthMult * startLocal;
-                    Vector3d point2 = mapLengthMult * (startLocal + (Scale * 0.95 * vectorLocal));
-                    Vector3d point3 = mapLengthMult * (startLocal + (Scale * vectorLocal));
-
-                    label.fontSize = (float)(12.0 * Scale * mapWidthMult);
-
-                    useWidth = (float)(Width * Scale * mapWidthMult);
-
-                    // Position the arrow line:
-                    line.positionCount = 2;
-                    line.startWidth = useWidth;
-                    line.endWidth = useWidth;
-                    line.SetPosition(0, point1);
-                    line.SetPosition(1, Pointy ? point2 : point3);
-
-                    // Position the arrow hat.  Note, if Pointy = false, this will be invisible.
-                    hat.positionCount = 2;
-                    hat.startWidth = useWidth * 3.5f;
-                    hat.endWidth = 0.0f;
-                    hat.SetPosition(0, point2);
-                    hat.SetPosition(1, point3);
-
-                    // Put the label at the midpoint of the arrow:
-                    labelLocation = (point1 + point3) / 2;
-                    label.transform.position = labelLocation;
-                    label.transform.rotation = camera.transform.rotation;
-                }
-            }
+            }            
 
             public void RenderColor() {
-                Color c1 = Color.Color;
-                Color c2 = Color.Color;
-                c1.a = c1.a * (float)0.25;
-                Color lCol =
-                    UnityEngine.Color.Lerp(c2, UnityEngine.Color.white, 0.7f); // "whiten" the label color a lot.
-
-                if (line != null && hat != null) {
-                    // If Wiping, then the line has the fade effect from color c1 to color c2,
-                    // else it stays at c2 the whole way:
-                    line.startColor = c1;
-                    line.endColor = c2;
-                    // The hat does not have the fade effect, staying at color c2 the whole way:
-                    hat.startColor = c2;
-                    hat.endColor = c2;
-                    label.color = lCol; // The label does not have the fade effect.
-                }
             }
 
             public void RenderValues() {

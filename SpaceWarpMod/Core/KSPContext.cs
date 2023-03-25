@@ -11,6 +11,7 @@ using KontrolSystem.TO2.Runtime;
 using KSP.Game;
 using KSP.Sim.impl;
 using KSP.Sim.State;
+using Shapes;
 using UnityEngine;
 
 namespace KontrolSystem.SpaceWarpMod.Core {
@@ -155,6 +156,16 @@ namespace KontrolSystem.SpaceWarpMod.Core {
                 ContextHolder.CurrentContext.Value = this;
                 foreach (IMarker marker in markers)
                     marker.OnRender();
+            } finally {
+                ContextHolder.CurrentContext.Value = null;
+            }
+        }
+
+        public void TriggerDrawShapes(Camera camera) {
+            try {
+                ContextHolder.CurrentContext.Value = this;
+                foreach (IMarker marker in markers)
+                    marker.OnDrawShapes(camera);
             } finally {
                 ContextHolder.CurrentContext.Value = null;
             }

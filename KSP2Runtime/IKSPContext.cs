@@ -15,6 +15,8 @@ namespace KontrolSystem.KSP.Runtime {
         void OnUpdate();
 
         void OnRender();
+
+        void OnDrawShapes(Camera camera);
     }
 
     public interface IKSPAutopilot {

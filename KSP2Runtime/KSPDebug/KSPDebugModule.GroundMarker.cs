@@ -87,6 +87,9 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
                     localPos + radius * (QuaternionD.AngleAxis(Rotation - 130, up) * north),
                     color, GLUtils.Colored);
             }
+
+            public void OnDrawShapes(Camera camera) {
+            }
         }
     }
 }

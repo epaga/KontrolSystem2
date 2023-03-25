@@ -10,6 +10,8 @@ using UnityEngine;
 
 namespace KontrolSystem.SpaceWarpMod.UI {
     public class ProcessArgumentsWindow : ResizableWindow {
+        private Mainframe mainframe;
+        
         abstract class ArgumentListElement {
             public EntrypointArgumentDescriptor Descriptor { get; }
             public object Value { get; protected set; }

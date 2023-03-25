@@ -93,6 +93,9 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
             public void OnRender() {
             }
 
+            public void OnDrawShapes(Camera camera) {
+            }
+
             private static string TextWrap(string text) => $"<mspace=0.7em><mark=#10101040><align=left>{text}</align></mark></mspace>";
         }
     }

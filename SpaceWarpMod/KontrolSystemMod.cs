@@ -1,5 +1,5 @@
-﻿using System.IO;
-using BepInEx;
+﻿using BepInEx;
+using KontrolSystem.SpaceWarpMod.Core;
 using KontrolSystem.SpaceWarpMod.UI;
 using KSP.Game;
 using SpaceWarp;
@@ -16,6 +16,8 @@ namespace KontrolSystem.SpaceWarpMod {
     [BepInDependency(SpaceWarpPlugin.ModGuid, SpaceWarpPlugin.ModVer)]
     public class KontrolSystemMod : BaseSpaceWarpPlugin {
         private ModuleManagerWindow moduleManagerWindow;
+        private Mainframe mainframe;
+        private FontManager fontManager;
 
         private static GameState[] InvalidStates = new GameState[]
             { GameState.Invalid, GameState.Flag, GameState.Loading, GameState.PhotoMode, GameState.WarmUpLoading, GameState.MainMenu, GameState.TrainingCenter };
@@ -30,6 +32,8 @@ namespace KontrolSystem.SpaceWarpMod {
 
             CommonStyles.Init(Skins.ConsoleSkin, Instantiate(Skins.ConsoleSkin));
 
+            fontManager ??= gameObject.AddComponent<FontManager>();
+            mainframe ??= gameObject.AddComponent<Mainframe>();
             moduleManagerWindow ??= gameObject.AddComponent<ModuleManagerWindow>();
 
             Appbar.RegisterAppButton("Kontrol System 2", "BTN-KontrolSystem", AssetManager.GetAsset<Texture2D>($"{SpaceWarpMetadata.ModID}/images/icon.png"),

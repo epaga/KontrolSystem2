@@ -78,6 +78,9 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
             public void OnRender() {
             }
 
+            public void OnDrawShapes(Camera camera) {
+            }
+
             private void RenderPointCoords() {
                 if (line != null) {
                     double mapLengthMult = 1.0; // for scaling when on map view.

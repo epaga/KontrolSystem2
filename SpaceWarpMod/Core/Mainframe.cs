@@ -8,13 +8,14 @@ using KontrolSystem.KSP.Runtime;
 using KontrolSystem.KSP.Runtime.KSPConsole;
 using KontrolSystem.KSP.Runtime.KSPGame;
 using KontrolSystem.Parsing;
-using KontrolSystem.SpaceWarpMod.Utils;
 using KontrolSystem.TO2;
-using KSP.Api;
+using KontrolSystem.TO2.AST;
 using KSP.Game;
 using KSP.Messages;
 using KSP.Sim.impl;
+using Shapes;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace KontrolSystem.SpaceWarpMod.Core {
     public readonly struct MainframeError {
@@ -29,8 +30,8 @@ namespace KontrolSystem.SpaceWarpMod.Core {
         }
     }
 
-    public class Mainframe : Singleton<Mainframe> {
-        static readonly char[] PathSeparator = { '\\', '/' };
+    public class Mainframe : KerbalMonoBehaviour {
+        public static Mainframe Instance { get; private set; }
 
         volatile State state;
         volatile bool rebooting;
@@ -52,6 +53,12 @@ namespace KontrolSystem.SpaceWarpMod.Core {
 
         public void Awake() {
             Game.Messages.Subscribe<GameStateChangedMessage>(OnStateChange);
+            
+            if (Instance != null && Instance != this) { 
+                Destroy(this); 
+            } else { 
+                Instance = this; 
+            }
         }
 
         public void Destroy() {
@@ -82,6 +89,38 @@ namespace KontrolSystem.SpaceWarpMod.Core {
             }
         }
 
+        public virtual void OnEnable() {
+            UnityEngine.Debug.Log(">>>1");
+            Camera.onPreRender += OnCameraPreRender;
+        }
+
+        public virtual void OnDisable() {
+            Camera.onPreRender -= OnCameraPreRender;
+        }
+
+        private void OnCameraPreRender(Camera cam)
+        {
+            if (cam.cameraType != CameraType.Game) return;
+            if (cam.name != "FlightCameraPhysics_Main" && cam.name != "MapCamera") return;
+//            DrawCommand.ClearAllCommands();
+            DrawShapes(cam);
+        }        
+        public void DrawShapes(Camera camera) {
+            if (processes == null) return;
+            using (Draw.Command(camera, CameraEvent.AfterForwardAlpha)) {
+                Draw.ResetAllDrawStates();
+                Draw.BlendMode = ShapesBlendMode.Opaque;
+                foreach (KontrolSystemProcess process in processes) {
+                    switch (process.State) {
+                    case KontrolSystemProcessState.Outdated:
+                    case KontrolSystemProcessState.Running:
+                        process.context?.TriggerDrawShapes(camera);
+                        break;
+                    }
+                }
+            }
+        }
+        
         public void Reboot(KontrolSystemConfig config) {
             if (rebooting) return;
             DoReboot(config);
