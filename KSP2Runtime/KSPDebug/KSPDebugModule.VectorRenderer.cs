@@ -74,18 +74,21 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
 
             public void OnDrawShapes(Camera cam) {
                 if (!enable) return;
+                using (Draw.Command(cam, CameraEvent.AfterForwardAlpha)) {
+                    Draw.ResetAllDrawStates();
+                    Draw.BlendMode = ShapesBlendMode.Opaque;
 
                     Draw.ConeSizeSpace = ThicknessSpace.Pixels;
                     Draw.LineThicknessSpace = ThicknessSpace.Pixels;
                     Draw.LineThickness = (float)Width;
                     Draw.LineGeometry = LineGeometry.Volumetric3D;
-                    
+
                     Position start = startProvider();
                     Position end = endProvider?.Invoke() ?? start + vectorProvider();
                     Vector3d startLocal;
                     Vector3d vectorLocal;
                     double mapWidthMult = 1.0;
-                    
+
                     if (KSPContext.CurrentContext.Game.Map.TryGetMapCore(out MapCore mapCore) && mapCore.IsEnabled) {
                         var space = mapCore.map3D.GetSpaceProvider();
 
@@ -99,11 +102,13 @@ namespace KontrolSystem.KSP.Runtime.KSPDebug {
                     }
 
                     Draw.FontSize = (float)(12 * mapWidthMult);
-                    
+
                     Draw.Line(startLocal, startLocal + vectorLocal, Color.Color);
-                    if(Pointy)
-                        Draw.Cone(startLocal + vectorLocal, vectorLocal.normalized, (float)(Width * 2), (float)(Width * 2), false, Color.Color);
+                    if (Pointy)
+                        Draw.Cone(startLocal + vectorLocal, vectorLocal.normalized, (float)(Width * 2),
+                            (float)(Width * 2), false, Color.Color);
                     Draw.Text(startLocal + 0.5 * vectorLocal, cam.transform.rotation, labelStr, Color.Color);
+                }
             }
 
             [KSField(Description = "The current starting position of the debugging vector.")]

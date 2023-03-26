@@ -90,14 +90,19 @@ namespace KontrolSystem.SpaceWarpMod.Core {
         }
 
         public virtual void OnEnable() {
-            UnityEngine.Debug.Log(">>>1");
             Camera.onPreRender += OnCameraPreRender;
+            Camera.onPostRender += OnCameraPostRender;
         }
 
         public virtual void OnDisable() {
             Camera.onPreRender -= OnCameraPreRender;
+            Camera.onPostRender -= OnCameraPostRender;
         }
 
+        private void OnCameraPostRender(Camera cam) {
+            if (cam.cameraType != CameraType.Game || cam.name != "FlightCameraPhysics_Main") return;
+            DrawCommand.ClearAllCommands();
+        }
         private void OnCameraPreRender(Camera cam)
         {
             if (cam.cameraType != CameraType.Game) return;
@@ -107,9 +112,6 @@ namespace KontrolSystem.SpaceWarpMod.Core {
         }        
         public void DrawShapes(Camera camera) {
             if (processes == null) return;
-            using (Draw.Command(camera, CameraEvent.AfterForwardAlpha)) {
-                Draw.ResetAllDrawStates();
-                Draw.BlendMode = ShapesBlendMode.Opaque;
                 foreach (KontrolSystemProcess process in processes) {
                     switch (process.State) {
                     case KontrolSystemProcessState.Outdated:
@@ -118,7 +120,6 @@ namespace KontrolSystem.SpaceWarpMod.Core {
                         break;
                     }
                 }
-            }
         }
         
         public void Reboot(KontrolSystemConfig config) {
